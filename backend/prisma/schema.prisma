@@ -1,0 +1,36 @@
+// Prisma Schema file
+// Learn more about Prisma schema in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Department Model
+// Represents departments within the organization (e.g., Engineering, HR)
+// Each department can have multiple employees (One-to-Many relationship)
+model Department {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  createdAt DateTime   @default(now())
+  employees Employee[]
+}
+
+// Employee Model
+// Represents an employee in the system
+// Belongs to one department via the foreign key departmentId
+model Employee {
+  id           Int        @id @default(autoincrement())
+  name         String
+  email        String     @unique
+  phone        String?
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  designation  String
+  salary       Float
+  createdAt    DateTime   @default(now())
+}
