@@ -1,22 +1,23 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import { AlertCircle, RotateCw } from 'lucide-react';
 
-/**
- * ErrorMessage component
- * Displays friendly error feedback when network or server operations fail.
- * Provides a "Retry" button to re-trigger failed requests.
- * 
- * @param {Object} props
- * @param {string} props.message - The error message to display
- * @param {Function} [props.onRetry] - Callback invoked when the user clicks Retry
- */
 export default function ErrorMessage({ message, onRetry }) {
   return (
-    <div className="error-container" role="alert">
-      <div className="error-icon">⚠️</div>
+    <motion.div
+      className="error-container"
+      role="alert"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <div className="error-icon-wrapper" aria-hidden="true">
+        <AlertCircle size={22} className="error-icon" />
+      </div>
       <div className="error-content">
         <h4 className="error-title">Something went wrong</h4>
         <p className="error-message">
-          {message || 'Unable to connect to the service. Please try again.'}
+          {message || 'Unable to connect to the backend service. Please ensure the server is running.'}
         </p>
       </div>
       {onRetry && (
@@ -24,11 +25,12 @@ export default function ErrorMessage({ message, onRetry }) {
           type="button"
           className="btn btn-retry"
           onClick={onRetry}
-          aria-label="Retry operation"
+          aria-label="Retry loading data"
         >
-          🔄 Retry
+          <RotateCw size={15} className="spin-on-hover" />
+          <span>Retry</span>
         </button>
       )}
-    </div>
+    </motion.div>
   );
 }

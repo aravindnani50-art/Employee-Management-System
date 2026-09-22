@@ -1,48 +1,61 @@
 import React from 'react';
-import EmployeesPage from './pages/EmployeesPage';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
-/**
- * App Component
- * Top-level application shell with professional navigation header and container layout.
- */
+// Providers
+import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
+import { AuthProvider } from './auth/AuthContext';
+import ProtectedRoute from './auth/ProtectedRoute';
+
+// Layout
+import AppLayout from './components/layout/AppLayout';
+
+// Pages
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Employees from './pages/Employees';
+import AddEmployee from './pages/AddEmployee';
+import EmployeeDetails from './pages/EmployeeDetails';
+import EditEmployee from './pages/EditEmployee';
+import Departments from './pages/Departments';
+import Settings from './pages/Settings';
+import NotFound from './pages/NotFound';
+
 export default function App() {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-
   return (
-    <div className="app-container">
-      {/* Navigation Header */}
-      <header className="navbar">
-        <div className="navbar-container">
-          <div className="navbar-brand">
-            <span className="navbar-logo" aria-hidden="true">🏢</span>
-            <div className="brand-text">
-              <span className="brand-title">WorkPulse EMS</span>
-              <span className="brand-subtitle">Employee Management System</span>
-            </div>
-          </div>
+    <ThemeProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Public Route */}
+              <Route path="/login" element={<Login />} />
 
-          <div className="navbar-meta">
-            <div className="api-badge" title={`API Endpoint: ${apiBaseUrl}`}>
-              <span className="status-dot"></span>
-              <span className="api-badge-text">REST API Connected</span>
-            </div>
-          </div>
-        </div>
-      </header>
+              {/* Protected Portal Routes */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="employees" element={<Employees />} />
+                <Route path="employees/new" element={<AddEmployee />} />
+                <Route path="employees/:id" element={<EmployeeDetails />} />
+                <Route path="employees/:id/edit" element={<EditEmployee />} />
+                <Route path="departments" element={<Departments />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
 
-      {/* Main View */}
-      <main className="main-content">
-        <div className="main-wrapper">
-          <EmployeesPage />
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="footer">
-        <div className="footer-container">
-          <p>© {new Date().getFullYear()} Full-Stack Employee Management System | Frontend built with React & native fetch()</p>
-        </div>
-      </footer>
-    </div>
+              {/* 404 Catch-All */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
