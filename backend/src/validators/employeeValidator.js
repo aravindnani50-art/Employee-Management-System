@@ -18,7 +18,7 @@ const validateEmployeeData = (data, isUpdate = false) => {
     return ['Request body cannot be empty'];
   }
 
-  const { name, email, phone, departmentId, designation, salary } = data;
+  const { name, email, phone, departmentId, designation, salary, imageUrl } = data;
 
   // 1. Name validation
   if (name === undefined || name === null || String(name).trim() === '') {
@@ -68,6 +68,13 @@ const validateEmployeeData = (data, isUpdate = false) => {
     const phoneDigits = trimmedPhone.replace(/[\s+-]/g, '');
     if (!/^\d{7,15}$/.test(phoneDigits)) {
       errors.push('Phone number must contain between 7 and 15 digits');
+    }
+  }
+
+  // 7. Optional Image URL validation
+  if (imageUrl !== undefined && imageUrl !== null && String(imageUrl).trim() !== '') {
+    if (typeof imageUrl !== 'string' || imageUrl.trim().length > 2048) {
+      errors.push('Image URL must be a string under 2048 characters');
     }
   }
 

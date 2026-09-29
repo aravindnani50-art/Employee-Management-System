@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 
 /**
  * Reusable EmployeeForm component
@@ -30,7 +31,8 @@ export default function EmployeeForm({
     phone: '',
     departmentId: '',
     designation: '',
-    salary: ''
+    salary: '',
+    imageUrl: ''
   });
 
   // Client-side validation errors state
@@ -57,7 +59,8 @@ export default function EmployeeForm({
         phone: initialData.phone || '',
         departmentId: deptId,
         designation: initialData.designation || '',
-        salary: initialData.salary !== undefined && initialData.salary !== null ? String(initialData.salary) : ''
+        salary: initialData.salary !== undefined && initialData.salary !== null ? String(initialData.salary) : '',
+        imageUrl: initialData.imageUrl || ''
       });
     } else {
       setFormData({
@@ -66,7 +69,8 @@ export default function EmployeeForm({
         phone: '',
         departmentId: '',
         designation: '',
-        salary: ''
+        salary: '',
+        imageUrl: ''
       });
     }
     setErrors({});
@@ -163,15 +167,30 @@ export default function EmployeeForm({
       departmentId: isNaN(Number(formData.departmentId)) ? formData.departmentId : Number(formData.departmentId),
       department: selectedDeptObj && selectedDeptObj.name ? selectedDeptObj.name : formData.departmentId,
       designation: formData.designation.trim(),
-      salary: parseFloat(formData.salary)
+      salary: parseFloat(formData.salary),
+      imageUrl: formData.imageUrl && formData.imageUrl.trim() ? formData.imageUrl.trim() : null
     };
 
     onSubmit(payload);
   };
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal-card">
+    <motion.div
+      className="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+    >
+      <motion.div
+        className="modal-card"
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+      >
         <div className="modal-header">
           <h2 className="modal-title">
             {isEditMode ? 'Edit Employee Record' : 'Add New Employee'}
@@ -196,9 +215,26 @@ export default function EmployeeForm({
         )}
 
         <form onSubmit={handleSubmit} noValidate className="employee-form">
-          <div className="form-grid">
+          <motion.div
+            className="form-grid"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: { staggerChildren: 0.04, delayChildren: 0.05 }
+              }
+            }}
+          >
             {/* Full Name */}
-            <div className="form-field full-width">
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 6 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] } }
+              }}
+              className="form-field full-width"
+            >
               <label htmlFor="name" className="form-label">
                 Full Name <span className="required-star">*</span>
               </label>
@@ -214,10 +250,16 @@ export default function EmployeeForm({
                 autoFocus
               />
               {errors.name && <span className="field-error-msg">{errors.name}</span>}
-            </div>
+            </motion.div>
 
             {/* Email Address */}
-            <div className="form-field">
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 6 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] } }
+              }}
+              className="form-field"
+            >
               <label htmlFor="email" className="form-label">
                 Email Address <span className="required-star">*</span>
               </label>
@@ -232,10 +274,16 @@ export default function EmployeeForm({
                 disabled={isSubmitting}
               />
               {errors.email && <span className="field-error-msg">{errors.email}</span>}
-            </div>
+            </motion.div>
 
             {/* Phone Number */}
-            <div className="form-field">
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 6 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] } }
+              }}
+              className="form-field"
+            >
               <label htmlFor="phone" className="form-label">
                 Phone Number
               </label>
@@ -250,10 +298,16 @@ export default function EmployeeForm({
                 disabled={isSubmitting}
               />
               {errors.phone && <span className="field-error-msg">{errors.phone}</span>}
-            </div>
+            </motion.div>
 
             {/* Department Dropdown */}
-            <div className="form-field">
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 6 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] } }
+              }}
+              className="form-field"
+            >
               <label htmlFor="departmentId" className="form-label">
                 Department <span className="required-star">*</span>
               </label>
@@ -289,10 +343,16 @@ export default function EmployeeForm({
               {errors.departmentId && (
                 <span className="field-error-msg">{errors.departmentId}</span>
               )}
-            </div>
+            </motion.div>
 
             {/* Designation / Job Title */}
-            <div className="form-field">
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 6 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] } }
+              }}
+              className="form-field"
+            >
               <label htmlFor="designation" className="form-label">
                 Designation <span className="required-star">*</span>
               </label>
@@ -309,10 +369,16 @@ export default function EmployeeForm({
               {errors.designation && (
                 <span className="field-error-msg">{errors.designation}</span>
               )}
-            </div>
+            </motion.div>
 
             {/* Annual Salary */}
-            <div className="form-field full-width">
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 6 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] } }
+              }}
+              className="form-field full-width"
+            >
               <label htmlFor="salary" className="form-label">
                 Annual Salary ($) <span className="required-star">*</span>
               </label>
@@ -329,22 +395,76 @@ export default function EmployeeForm({
                 disabled={isSubmitting}
               />
               {errors.salary && <span className="field-error-msg">{errors.salary}</span>}
-            </div>
-          </div>
+            </motion.div>
+
+            {/* Profile Image URL */}
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 6 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] } }
+              }}
+              className="form-field full-width"
+            >
+              <label htmlFor="imageUrl" className="form-label">
+                Profile Image URL <span className="optional-tag">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                id="imageUrl"
+                name="imageUrl"
+                className="form-input"
+                placeholder="e.g. /assets/employees/placeholder.jpg or https://..."
+                value={formData.imageUrl}
+                onChange={handleChange}
+                disabled={isSubmitting}
+              />
+              <span className="field-hint-text">Leave blank to use an initials avatar.</span>
+
+              {formData.imageUrl && String(formData.imageUrl).trim() !== '' && (
+                <motion.div
+                  className="form-image-preview-card"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ type: 'spring', damping: 24, stiffness: 320 }}
+                >
+                  <div className="form-preview-avatar-stage">
+                    <img
+                      src={formData.imageUrl}
+                      alt="Live Preview"
+                      className="form-preview-avatar-img"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    <div className="sonar-scanner-laser" />
+                  </div>
+                  <div className="form-preview-meta">
+                    <span className="form-preview-badge">Live Image Feed • Synchronized</span>
+                    <span className="form-preview-url">{formData.imageUrl}</span>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
+          </motion.div>
 
           <div className="modal-footer">
-            <button
+            <motion.button
               type="button"
               className="btn btn-secondary"
               onClick={onCancel}
               disabled={isSubmitting}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
             >
               Cancel
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               type="submit"
               className="btn btn-primary"
               disabled={isSubmitting}
+              whileHover={!isSubmitting ? { scale: 1.02, y: -1 } : {}}
+              whileTap={!isSubmitting ? { scale: 0.96 } : {}}
             >
               {isSubmitting
                 ? isEditMode
@@ -353,10 +473,10 @@ export default function EmployeeForm({
                 : isEditMode
                 ? 'Save Changes'
                 : 'Create Employee'}
-            </button>
+            </motion.button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

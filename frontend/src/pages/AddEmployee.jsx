@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   UserPlus,
@@ -11,7 +11,8 @@ import {
   Phone,
   Briefcase,
   DollarSign,
-  User
+  User,
+  Image as ImageIcon
 } from 'lucide-react';
 import { createEmployee } from '../services/employeeApi';
 import { getDepartments } from '../services/departmentApi';
@@ -19,6 +20,8 @@ import { useToast } from '../context/ToastContext';
 
 export default function AddEmployee() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnUrl = location.state?.from || '/employees';
   const { showSuccess } = useToast();
 
   const [departments, setDepartments] = useState([]);
@@ -31,7 +34,8 @@ export default function AddEmployee() {
     phone: '',
     departmentId: '',
     designation: '',
-    salary: ''
+    salary: '',
+    imageUrl: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -123,7 +127,8 @@ export default function AddEmployee() {
       await createEmployee({
         ...formData,
         departmentId: Number(formData.departmentId),
-        salary: parseFloat(formData.salary)
+        salary: parseFloat(formData.salary),
+        imageUrl: formData.imageUrl && formData.imageUrl.trim() ? formData.imageUrl.trim() : null
       });
 
       showSuccess(`Employee "${formData.name}" successfully created.`);
@@ -139,10 +144,21 @@ export default function AddEmployee() {
     <div className="form-page-container">
       {/* Breadcrumb Navigation */}
       <nav className="breadcrumb-nav" aria-label="Breadcrumb">
-        <Link to="/employees" className="breadcrumb-link">
+        <button
+          type="button"
+          onClick={() => {
+            if (location.state?.from) {
+              navigate(location.state.from);
+            } else {
+              navigate(-1);
+            }
+          }}
+          className="breadcrumb-link"
+          title="Back to previous page"
+        >
           <ArrowLeft size={16} />
           <span>Back to Directory</span>
-        </Link>
+        </button>
         <span className="breadcrumb-separator">/</span>
         <span className="breadcrumb-current">Add New Employee</span>
       </nav>
@@ -308,17 +324,69 @@ export default function AddEmployee() {
               </div>
               {errors.salary && <span className="field-error-msg">{errors.salary}</span>}
             </div>
+
+            {/* Profile Photo URL */}
+            <div className="form-group full-width">
+              <label htmlFor="imageUrl" className="form-label">
+                Profile Photo URL <span className="opt-label">(Optional)</span>
+              </label>
+              <div className="input-icon-wrapper">
+                <ImageIcon size={18} className="field-icon" aria-hidden="true" />
+                <input
+                  id="imageUrl"
+                  name="imageUrl"
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. /assets/employees/placeholder.jpg or https://..."
+                  value={formData.imageUrl}
+                  onChange={handleChange}
+                />
+              </div>
+              <span className="field-hint-text">Leave blank to use an initials avatar fallback.</span>
+
+              {formData.imageUrl && String(formData.imageUrl).trim() !== '' && (
+                <div className="form-image-preview-card">
+                  <div className="form-preview-avatar-stage">
+                    <img
+                      src={formData.imageUrl}
+                      alt="Live Preview"
+                      className="form-preview-avatar-img"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    <div className="sonar-scanner-laser" />
+                  </div>
+                  <div className="form-preview-meta">
+                    <span className="form-preview-badge">Live Image Feed • Verified</span>
+                    <span className="form-preview-url">{formData.imageUrl}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Actions */}
           <div className="form-actions-footer">
-            <Link to="/employees" className="btn btn-secondary">
-              Cancel
-            </Link>
             <button
+              type="button"
+              onClick={() => {
+                if (location.state?.from) {
+                  navigate(location.state.from);
+                } else {
+                  navigate(-1);
+                }
+              }}
+              className="btn btn-secondary"
+            >
+              Cancel
+            </button>
+            <motion.button
               type="submit"
               className="btn btn-primary"
               disabled={isSubmitting}
+              whileHover={!isSubmitting ? { y: -1 } : {}}
+              whileTap={!isSubmitting ? { scale: 0.96 } : {}}
             >
               {isSubmitting ? (
                 <>
@@ -331,7 +399,7 @@ export default function AddEmployee() {
                   <span>Create Employee</span>
                 </>
               )}
-            </button>
+            </motion.button>
           </div>
         </form>
       </motion.div>

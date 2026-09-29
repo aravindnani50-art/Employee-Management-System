@@ -32,5 +32,6 @@ model Employee {
   department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   designation  String
   salary       Float
+  imageUrl     String?
   createdAt    DateTime   @default(now())
 }

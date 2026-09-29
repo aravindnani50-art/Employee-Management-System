@@ -1,29 +1,16 @@
 import React from 'react';
-import { getInitials, stringToColorHue } from '../../utils/formatters';
+import EmployeeAvatar from './EmployeeAvatar';
 
 /**
  * Avatar Component
- * Strictly renders clean, styled initials with deterministic color hues.
- * No external image upload or external image URL dependencies.
+ * Backwards-compatible wrapper delegating to EmployeeAvatar.
+ * Supports passing either `name` string or `employee` object.
  */
-export default function Avatar({ name = '', size = 'md', className = '' }) {
-  const initials = getInitials(name);
-  const hue = stringToColorHue(name);
-
-  // Derive accessible pastel/dark-adapted background and border using HSL
-  const style = {
-    backgroundColor: `hsl(${hue}, 65%, 45%)`,
-    color: '#ffffff'
-  };
-
-  return (
-    <div
-      className={`avatar-circle avatar-${size} ${className}`}
-      style={style}
-      aria-label={`Avatar for ${name || 'Employee'}`}
-      role="img"
-    >
-      <span className="avatar-initials">{initials}</span>
-    </div>
-  );
+export default function Avatar({ name = '', employee = null, size = 'md', className = '', ...rest }) {
+  if (employee) {
+    return <EmployeeAvatar employee={employee} size={size} className={className} {...rest} />;
+  }
+  return <EmployeeAvatar name={name} size={size} className={className} {...rest} />;
 }
+
+export { EmployeeAvatar };

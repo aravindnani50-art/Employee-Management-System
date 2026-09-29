@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Edit2,
@@ -11,7 +11,8 @@ import {
   Phone,
   Briefcase,
   DollarSign,
-  User
+  User,
+  Image as ImageIcon
 } from 'lucide-react';
 import { getEmployeeById, updateEmployee } from '../services/employeeApi';
 import { getDepartments } from '../services/departmentApi';
@@ -21,6 +22,8 @@ import { useToast } from '../context/ToastContext';
 export default function EditEmployee() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnUrl = location.state?.from || '/employees';
   const { showSuccess } = useToast();
 
   const [departments, setDepartments] = useState([]);
@@ -34,7 +37,8 @@ export default function EditEmployee() {
     phone: '',
     departmentId: '',
     designation: '',
-    salary: ''
+    salary: '',
+    imageUrl: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -44,6 +48,8 @@ export default function EditEmployee() {
 
   // Load employee and departments
   useEffect(() => {
+    let isMounted = true;
+
     async function loadData() {
       setLoading(true);
       setLoadError(null);
@@ -59,24 +65,38 @@ export default function EditEmployee() {
           throw new Error('Employee record not found.');
         }
 
-        setInitialName(empData.name);
-        setFormData({
-          name: empData.name || '',
-          email: empData.email || '',
-          phone: empData.phone || '',
-          departmentId: String(empData.departmentId || empData.department?.id || ''),
-          designation: empData.designation || '',
-          salary: empData.salary !== undefined && empData.salary !== null ? String(empData.salary) : ''
-        });
+        if (isMounted) {
+          setInitialName(empData.name);
+          setFormData({
+            name: empData.name || '',
+            email: empData.email || '',
+            phone: empData.phone || '',
+            departmentId: String(empData.departmentId || empData.department?.id || ''),
+            designation: empData.designation || '',
+            salary: empData.salary !== undefined && empData.salary !== null ? String(empData.salary) : '',
+            imageUrl: empData.imageUrl || ''
+          });
 
-        setDepartments(Array.isArray(deptsRes) ? deptsRes : deptsRes?.data || []);
+          setDepartments(Array.isArray(deptsRes) ? deptsRes : deptsRes?.data || []);
+        }
       } catch (err) {
-        setLoadError(err.message || 'Unable to load employee details for editing.');
+        if (isMounted) {
+          setLoadError(err.message || 'Unable to load employee details for editing.');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
-    loadData();
+
+    if (id) {
+      loadData();
+    }
+
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   // Validation
@@ -149,11 +169,15 @@ export default function EditEmployee() {
       await updateEmployee(id, {
         ...formData,
         departmentId: Number(formData.departmentId),
-        salary: parseFloat(formData.salary)
+        salary: parseFloat(formData.salary),
+        imageUrl: formData.imageUrl && formData.imageUrl.trim() ? formData.imageUrl.trim() : null
       });
 
       showSuccess(`Employee "${formData.name}" successfully updated.`);
-      navigate(`/employees/${id}`);
+      navigate(`/employees/${id}`, {
+        replace: true,
+        state: { from: returnUrl }
+      });
     } catch (err) {
       setServerError(err.message || 'Failed to update employee details.');
     } finally {
@@ -199,12 +223,23 @@ export default function EditEmployee() {
     <div className="form-page-container">
       {/* Breadcrumb Navigation */}
       <nav className="breadcrumb-nav" aria-label="Breadcrumb">
-        <Link to="/employees" className="breadcrumb-link">
+        <button
+          type="button"
+          onClick={() => {
+            if (location.state?.from) {
+              navigate(location.state.from);
+            } else {
+              navigate(-1);
+            }
+          }}
+          className="breadcrumb-link"
+          title="Back to previous page"
+        >
           <ArrowLeft size={16} />
-          <span>Back to Directory</span>
-        </Link>
+          <span>Back</span>
+        </button>
         <span className="breadcrumb-separator">/</span>
-        <Link to={`/employees/${id}`} className="breadcrumb-link">
+        <Link to={`/employees/${id}`} state={{ from: returnUrl }} className="breadcrumb-link">
           {initialName}
         </Link>
         <span className="breadcrumb-separator">/</span>
@@ -366,17 +401,69 @@ export default function EditEmployee() {
               </div>
               {errors.salary && <span className="field-error-msg">{errors.salary}</span>}
             </div>
+
+            {/* Profile Photo URL */}
+            <div className="form-group full-width">
+              <label htmlFor="imageUrl" className="form-label">
+                Profile Photo URL <span className="opt-label">(Optional)</span>
+              </label>
+              <div className="input-icon-wrapper">
+                <ImageIcon size={18} className="field-icon" aria-hidden="true" />
+                <input
+                  id="imageUrl"
+                  name="imageUrl"
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. /assets/employees/placeholder.jpg or https://..."
+                  value={formData.imageUrl}
+                  onChange={handleChange}
+                />
+              </div>
+              <span className="field-hint-text">Leave blank to use an initials avatar fallback.</span>
+
+              {formData.imageUrl && String(formData.imageUrl).trim() !== '' && (
+                <div className="form-image-preview-card">
+                  <div className="form-preview-avatar-stage">
+                    <img
+                      src={formData.imageUrl}
+                      alt="Live Preview"
+                      className="form-preview-avatar-img"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    <div className="sonar-scanner-laser" />
+                  </div>
+                  <div className="form-preview-meta">
+                    <span className="form-preview-badge">Live Image Feed • Verified</span>
+                    <span className="form-preview-url">{formData.imageUrl}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Actions */}
           <div className="form-actions-footer">
-            <Link to={`/employees/${id}`} className="btn btn-secondary">
-              Cancel
-            </Link>
             <button
+              type="button"
+              onClick={() => {
+                if (location.state?.from && location.state.from.startsWith('/employees/')) {
+                  navigate(location.state.from);
+                } else {
+                  navigate(`/employees/${id}`, { state: { from: returnUrl } });
+                }
+              }}
+              className="btn btn-secondary"
+            >
+              Cancel
+            </button>
+            <motion.button
               type="submit"
               className="btn btn-primary"
               disabled={isSubmitting}
+              whileHover={!isSubmitting ? { y: -1 } : {}}
+              whileTap={!isSubmitting ? { scale: 0.96 } : {}}
             >
               {isSubmitting ? (
                 <>
@@ -389,7 +476,7 @@ export default function EditEmployee() {
                   <span>Save Changes</span>
                 </>
               )}
-            </button>
+            </motion.button>
           </div>
         </form>
       </motion.div>

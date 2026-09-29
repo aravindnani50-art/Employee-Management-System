@@ -91,8 +91,8 @@ function handleNetworkError(err) {
  * @param {string} [params.search=''] - Search term (searches name or email)
  * @param {string|number} [params.department=''] - Filter by department / departmentId
  * @param {string} [params.designation=''] - Filter by designation
- * @param {string} [params.sortBy='createdAt'] - Field to sort by (e.g. 'name', 'salary', 'createdAt')
- * @param {string} [params.sortOrder='desc'] - Sort order ('asc' or 'desc')
+ * @param {string} [params.sortBy='name'] - Field to sort by (e.g. 'name', 'salary', 'createdAt')
+ * @param {string} [params.sortOrder='asc'] - Sort order ('asc' or 'desc')
  * @returns {Promise<Object>} API response containing data and pagination metadata
  */
 export async function getEmployees({
@@ -101,8 +101,8 @@ export async function getEmployees({
   search = '',
   department = '',
   designation = '',
-  sortBy = 'createdAt',
-  sortOrder = 'desc'
+  sortBy = 'name',
+  sortOrder = 'asc'
 } = {}) {
   try {
     const query = new URLSearchParams();

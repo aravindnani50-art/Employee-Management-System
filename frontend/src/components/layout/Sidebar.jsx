@@ -7,14 +7,13 @@ import {
   Building2,
   Settings,
   LogOut,
-  X,
-  ShieldCheck
+  X
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../auth/AuthContext';
-import Avatar from '../common/Avatar';
 
 export default function Sidebar({ isOpen, onClose }) {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -33,27 +32,40 @@ export default function Sidebar({ isOpen, onClose }) {
   return (
     <>
       {/* Mobile Backdrop */}
-      {isOpen && (
-        <div
-          className="sidebar-backdrop"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            className="sidebar-backdrop"
+            onClick={onClose}
+            aria-hidden="true"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          />
+        )}
+      </AnimatePresence>
 
-      <aside
+      <motion.aside
         className={`app-sidebar ${isOpen ? 'sidebar-open' : ''}`}
         aria-label="Main Navigation"
+        initial={{ opacity: 0, x: -12 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       >
         {/* Sidebar Header / Brand */}
         <div className="sidebar-header">
           <NavLink to="/dashboard" className="sidebar-brand" onClick={onClose}>
-            <div className="brand-icon-box">
+            <motion.div
+              className="brand-icon-box"
+              whileHover={{ rotate: [0, -10, 10, 0], scale: 1.1 }}
+              transition={{ duration: 0.35 }}
+            >
               <Building2 size={22} className="brand-svg" />
-            </div>
+            </motion.div>
             <div className="brand-text-block">
-              <span className="brand-app-name">WorkPulse</span>
-              <span className="brand-badge-portal">PORTAL</span>
+              <span className="brand-app-name">SONAR</span>
+              <span className="brand-badge-portal">EMS</span>
             </div>
           </NavLink>
           <button
@@ -70,10 +82,18 @@ export default function Sidebar({ isOpen, onClose }) {
         <nav className="sidebar-nav">
           <div className="nav-section-label">MAIN NAVIGATION</div>
           <ul className="nav-list">
-            {navItems.map((item) => {
+            {navItems.map((item, index) => {
               const Icon = item.icon;
               return (
-                <li key={item.to} className="nav-item">
+                <motion.li
+                  key={item.to}
+                  className="nav-item"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.05 + index * 0.035, duration: 0.2 }}
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                >
                   <NavLink
                     to={item.to}
                     end={item.to === '/employees'}
@@ -82,50 +102,58 @@ export default function Sidebar({ isOpen, onClose }) {
                     }
                     onClick={onClose}
                   >
-                    <Icon size={19} className="nav-icon" />
-                    <span className="nav-label">{item.label}</span>
+                    {({ isActive }) => (
+                      <>
+                        {isActive && (
+                          <motion.span
+                            layoutId="sidebar-active-pill"
+                            className="nav-active-pill"
+                            transition={{
+                              type: 'spring',
+                              stiffness: 380,
+                              damping: 32
+                            }}
+                          />
+                        )}
+                        <motion.div
+                          whileHover={{ scale: 1.2, rotate: [0, -8, 8, 0] }}
+                          transition={{ duration: 0.25 }}
+                          style={{ display: 'inline-flex' }}
+                        >
+                          <Icon size={19} className="nav-icon" />
+                        </motion.div>
+                        <span className="nav-label">{item.label}</span>
+                      </>
+                    )}
                   </NavLink>
-                </li>
+                </motion.li>
               );
             })}
           </ul>
         </nav>
 
-        {/* Demo Mode Notice */}
-        <div className="sidebar-demo-notice">
-          <div className="demo-notice-header">
-            <ShieldCheck size={14} />
-            <span>Demo Auth Active</span>
-          </div>
-          <p className="demo-notice-text">
-            Client-side isolated auth. Ready for backend JWT/OAuth integration.
-          </p>
-        </div>
-
-        {/* User Profile & Logout */}
+        {/* Direct Logout Action */}
         <div className="sidebar-footer">
-          <div className="sidebar-user-card">
-            <Avatar name={user?.name || 'Admin'} size="sm" />
-            <div className="sidebar-user-info">
-              <span className="sidebar-user-name" title={user?.name}>
-                {user?.name || 'Administrator'}
-              </span>
-              <span className="sidebar-user-role" title={user?.role}>
-                {user?.role || 'Admin'}
-              </span>
-            </div>
-            <button
-              type="button"
-              className="btn-sidebar-logout"
-              onClick={handleLogout}
-              title="Sign Out"
-              aria-label="Sign out of application"
+          <motion.button
+            type="button"
+            className="sidebar-logout-btn"
+            onClick={handleLogout}
+            whileHover={{ scale: 1.02, x: 2 }}
+            whileTap={{ scale: 0.97 }}
+            title="Log out of application"
+            aria-label="Log out of application"
+          >
+            <motion.div
+              whileHover={{ rotate: [0, -10, 10, 0] }}
+              transition={{ duration: 0.3 }}
+              className="sidebar-logout-icon-wrap"
             >
-              <LogOut size={17} />
-            </button>
-          </div>
+              <LogOut size={18} className="sidebar-logout-icon" />
+            </motion.div>
+            <span className="sidebar-logout-label">Logout</span>
+          </motion.button>
         </div>
-      </aside>
+      </motion.aside>
     </>
   );
 }

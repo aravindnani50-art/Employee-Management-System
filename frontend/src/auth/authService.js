@@ -1,32 +1,26 @@
 /**
- * Authentication Service (Demo / Mock Layer)
+ * Authentication Service
  * 
- * IMPORTANT ARCHITECTURAL NOTE:
- * This is an isolated, client-side demo authentication implementation.
- * It is NOT intended to replace production backend-verified authentication (such as JWT/OAuth/session cookies).
- * All auth state and credential logic is contained in this module so that once real backend
- * authentication endpoints are introduced, this file can be swapped for live API calls
- * without modifying any component, page, or route consumer.
+ * Manages user session state and validates credentials against exact portal requirements.
+ * Valid login credentials:
+ *   Email: Sonar@team.com
+ *   Password: sonar123
  */
 
-export const DEMO_CREDENTIALS = {
-  email: 'admin@workpulse.com',
-  password: 'admin123',
-  user: {
-    id: 'usr_admin_001',
-    name: 'Alex Morgan',
-    email: 'admin@workpulse.com',
-    role: 'HR Administrator',
-    avatarInitials: 'AM',
-    department: 'People Operations'
-  }
+export const SONAR_USER = {
+  id: 'usr_sonar_001',
+  name: 'Sonar Admin',
+  email: 'Sonar@team.com',
+  role: 'System Administrator',
+  avatarInitials: 'SA',
+  department: 'Operations'
 };
 
-const AUTH_STORAGE_KEY = 'ems_auth_session';
+const AUTH_STORAGE_KEY = 'sonar_ems_auth_session';
 
 /**
- * Perform login against demo credentials.
- * Simulates a standard 400ms network delay.
+ * Perform login against exact Sonar credentials.
+ * Rejects any deviation (case-sensitive email matching 'Sonar@team.com' and 'sonar123').
  * 
  * @param {string} email 
  * @param {string} password 
@@ -34,25 +28,21 @@ const AUTH_STORAGE_KEY = 'ems_auth_session';
  * @returns {Promise<Object>} User profile object
  */
 export async function login(email, password, rememberMe = true) {
-  // Simulate network request
-  await new Promise((resolve) => setTimeout(resolve, 450));
+  // Simulate standard network delay
+  await new Promise((resolve) => setTimeout(resolve, 400));
 
-  const cleanEmail = String(email || '').trim().toLowerCase();
-  const cleanPassword = String(password || '').trim();
+  const trimmedEmail = String(email || '').trim();
+  const trimmedPassword = String(password || '').trim();
 
-  // Accept demo credentials OR any valid test user input to ensure ease of evaluation
-  if (
-    (cleanEmail === DEMO_CREDENTIALS.email && cleanPassword === DEMO_CREDENTIALS.password) ||
-    (cleanEmail.includes('@') && cleanPassword.length >= 6)
-  ) {
+  // Exact credentials check:
+  // ONLY 'Sonar@team.com' and 'sonar123' are valid.
+  if (trimmedEmail === 'Sonar@team.com' && trimmedPassword === 'sonar123') {
     const user = {
-      ...DEMO_CREDENTIALS.user,
-      email: cleanEmail,
-      name: cleanEmail === DEMO_CREDENTIALS.email ? DEMO_CREDENTIALS.user.name : cleanEmail.split('@')[0]
+      ...SONAR_USER
     };
 
     const sessionData = {
-      token: 'demo_token_' + Date.now(),
+      token: 'sonar_token_' + Date.now(),
       user,
       createdAt: new Date().toISOString()
     };
@@ -68,7 +58,8 @@ export async function login(email, password, rememberMe = true) {
     return user;
   }
 
-  throw new Error('Invalid email or password. Use demo account: admin@workpulse.com / admin123');
+  // Reject all other credentials
+  throw new Error('Invalid email or password. Please verify your credentials.');
 }
 
 /**

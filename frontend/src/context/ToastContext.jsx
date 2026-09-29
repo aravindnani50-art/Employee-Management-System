@@ -13,7 +13,7 @@ export function ToastProvider({ children }) {
 
   const showToast = useCallback((message, type = 'success', duration = 4000) => {
     const id = 'toast_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-    const newToast = { id, message, type };
+    const newToast = { id, message, type, duration };
 
     setToasts((prev) => [...prev, newToast]);
 
@@ -55,22 +55,39 @@ export function ToastProvider({ children }) {
             <motion.div
               key={toast.id}
               className={`toast-item toast-${toast.type}`}
-              initial={{ opacity: 0, y: 16, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
+              initial={{ opacity: 0, x: 30, scale: 0.94 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 24, scale: 0.92 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               layout
             >
-              <div className="toast-icon-wrapper">{getIcon(toast.type)}</div>
+              <motion.div
+                className="toast-icon-wrapper"
+                initial={{ scale: 0.5, rotate: -15 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 450, damping: 18, delay: 0.05 }}
+              >
+                {getIcon(toast.type)}
+              </motion.div>
               <p className="toast-message">{toast.message}</p>
-              <button
+              <motion.button
                 type="button"
                 className="toast-close-btn"
                 onClick={() => removeToast(toast.id)}
+                whileHover={{ scale: 1.15, rotate: 90 }}
+                whileTap={{ scale: 0.85 }}
                 aria-label="Dismiss notification"
               >
                 <X size={16} />
-              </button>
+              </motion.button>
+              {toast.duration > 0 && (
+                <motion.div
+                  className="toast-progress-bar"
+                  initial={{ scaleX: 1 }}
+                  animate={{ scaleX: 0 }}
+                  transition={{ duration: toast.duration / 1000, ease: 'linear' }}
+                />
+              )}
             </motion.div>
           ))}
         </AnimatePresence>

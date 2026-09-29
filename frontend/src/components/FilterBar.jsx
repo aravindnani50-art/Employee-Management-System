@@ -17,8 +17,8 @@ export default function FilterBar({
   departments = [],
   selectedDepartment = '',
   selectedDesignation = '',
-  sortBy = 'createdAt',
-  sortOrder = 'desc',
+  sortBy = 'name',
+  sortOrder = 'asc',
   onFilterChange,
   onReset
 }) {
@@ -36,7 +36,7 @@ export default function FilterBar({
     'Accountant'
   ];
 
-  const hasActiveFilters = selectedDepartment || selectedDesignation || sortBy !== 'createdAt' || sortOrder !== 'desc';
+  const hasActiveFilters = selectedDepartment || selectedDesignation || sortBy !== 'name' || sortOrder !== 'asc';
 
   return (
     <div className="filter-bar">

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getCurrentUser, login as authLogin, logout as authLogout, DEMO_CREDENTIALS } from './authService';
+import { getCurrentUser, login as authLogin, logout as authLogout } from './authService';
 
 const AuthContext = createContext(null);
 
@@ -32,8 +32,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: Boolean(user),
     loading,
     login,
-    logout,
-    demoCredentials: DEMO_CREDENTIALS
+    logout
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

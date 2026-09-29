@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useSpring, useReducedMotion } from 'framer-motion';
 import {
   Building2,
   Lock,
@@ -10,16 +10,24 @@ import {
   AlertCircle,
   ArrowRight,
   ShieldCheck,
-  Check
+  CheckCircle2,
+  Shield
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../context/ToastContext';
+import {
+  useGsapContext,
+  animateSplitHeading,
+  scrambleElementText,
+  initCard3DTilt
+} from '../animations/gsapUtils';
 
 export default function Login() {
-  const { login, demoCredentials, isAuthenticated } = useAuth();
-  const { showSuccess, showInfo } = useToast();
+  const { login, isAuthenticated } = useAuth();
+  const { showSuccess } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const shouldReduceMotion = useReducedMotion();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,39 +35,82 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(true);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState({});
   const [authError, setAuthError] = useState(null);
+  const [shakeCard, setShakeCard] = useState(false);
+
+  const loginStageRef = useRef(null);
+  const brandTitleRef = useRef(null);
+  const subtitleRef = useRef(null);
+
+  useGsapContext(loginStageRef, ({ q }) => {
+    const card = q('.sonar-login-card')[0];
+    if (card) {
+      initCard3DTilt(card, { maxTilt: 5, scale: 1.01 });
+    }
+    if (brandTitleRef.current) {
+      animateSplitHeading(brandTitleRef.current, { delay: 0.25, duration: 0.8 });
+    }
+    if (subtitleRef.current) {
+      scrambleElementText(subtitleRef.current, 'Internal Employee Management Portal', {
+        delay: 0.5,
+        duration: 0.95
+      });
+    }
+  }, []);
 
   // If already logged in, redirect to dashboard
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated) {
       navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
+  // Subtle mouse-based interactive parallax
+  const springConfig = { damping: 25, stiffness: 90 };
+  const smoothImgX = useSpring(useMotionValue(0), springConfig);
+  const smoothImgY = useSpring(useMotionValue(0), springConfig);
+  const smoothOrbX = useSpring(useMotionValue(0), springConfig);
+  const smoothOrbY = useSpring(useMotionValue(0), springConfig);
+
+  const handleMouseMove = (e) => {
+    if (shouldReduceMotion || window.innerWidth < 1024) return;
+    const { clientX, clientY } = e;
+    const { innerWidth, innerHeight } = window;
+    const normX = (clientX / innerWidth - 0.5) * 2; // -1 to 1
+    const normY = (clientY / innerHeight - 0.5) * 2; // -1 to 1
+
+    smoothImgX.set(normX * -6);
+    smoothImgY.set(normY * -4);
+    smoothOrbX.set(normX * 15);
+    smoothOrbY.set(normY * 12);
+  };
+
   const validate = () => {
     const errs = {};
     if (!email.trim()) {
-      errs.email = 'Email address is required.';
+      errs.email = 'Work email is required.';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       errs.email = 'Please enter a valid email address.';
     }
 
     if (!password) {
       errs.password = 'Password is required.';
-    } else if (password.length < 6) {
-      errs.password = 'Password must be at least 6 characters.';
     }
     return errs;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting || isSuccess) return;
+
     setAuthError(null);
 
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      triggerShake();
       return;
     }
 
@@ -68,178 +119,379 @@ export default function Login() {
 
     try {
       await login(email, password, rememberMe);
-      showSuccess('Welcome back! Successfully logged into WorkPulse.');
-      const targetPath = location.state?.from?.pathname || '/dashboard';
-      navigate(targetPath, { replace: true });
+      setIsSuccess(true);
+      showSuccess('Welcome back! Successfully logged into SONAR EMS.');
+
+      // Always navigate to Dashboard upon logging in
+      setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 500);
     } catch (err) {
-      setAuthError(err.message || 'Authentication failed. Please verify your credentials.');
+      setAuthError(err.message || 'Invalid email or password. Please verify your credentials.');
+      triggerShake();
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleFillDemo = () => {
-    setEmail(demoCredentials.email);
-    setPassword(demoCredentials.password);
-    setErrors({});
-    setAuthError(null);
+  const triggerShake = () => {
+    setShakeCard(true);
+    setTimeout(() => setShakeCard(false), 450);
   };
 
-  const handleForgotPassword = (e) => {
-    e.preventDefault();
-    showInfo(`Demo Account Access: Email is "${demoCredentials.email}", password is "${demoCredentials.password}".`);
+  // Staggered entrance animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.07,
+        delayChildren: 0.15
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 14 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: [0.16, 1, 0.3, 1]
+      }
+    }
   };
 
   return (
-    <div className="login-viewport">
-      <motion.div
-        className="login-card-container"
-        initial={{ opacity: 0, y: 15, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.25, ease: 'easeOut' }}
-      >
-        {/* Brand Header */}
-        <div className="login-header">
-          <div className="login-logo-badge">
-            <Building2 size={28} className="login-logo-icon" />
-          </div>
-          <h1 className="login-app-title">WorkPulse EMS</h1>
-          <p className="login-app-subtitle">Internal Employee Management Portal</p>
-        </div>
+    <div className="sonar-login-stage" ref={loginStageRef} onMouseMove={handleMouseMove}>
+      {/* Dynamic Ambient Background Layer */}
+      <div className="sonar-ambient-layer" aria-hidden="true">
+        <motion.div
+          className="ambient-orb orb-primary"
+          style={{ x: smoothOrbX, y: smoothOrbY }}
+        />
+        <motion.div
+          className="ambient-orb orb-saffron"
+          style={{ x: smoothOrbX, y: smoothOrbY }}
+        />
+        <motion.div className="ambient-orb orb-emerald" />
+        <div className="ambient-mesh-grid" />
+      </div>
 
-        {/* Demo Credentials Quick Fill Box */}
-        <div className="demo-credentials-banner">
-          <div className="demo-credentials-info">
-            <ShieldCheck size={16} className="demo-shield-icon" />
-            <span>
-              Demo Login: <strong>{demoCredentials.email}</strong> / <strong>{demoCredentials.password}</strong>
-            </span>
-          </div>
-          <button
-            type="button"
-            className="btn-demo-autofill"
-            onClick={handleFillDemo}
-            title="Auto-fill demo credentials"
+      {/* Unified Panoramic Grid: 30% Login / 70% Team Visual */}
+      <div className="sonar-panoramic-container">
+        {/* LEFT COLUMN: Integrated Frosted Glass Login Experience (~30%) */}
+        <div className="sonar-login-zone">
+          {/* Subtle Environmental Decorative Elements from Team Photo */}
+          <motion.div
+            className="deco-env-badge badge-submitsafe"
+            initial={{ opacity: 0, y: -8 }}
+            animate={
+              shouldReduceMotion
+                ? { opacity: 0.25, y: 0 }
+                : { opacity: 0.25, y: [0, -3, 0] }
+            }
+            transition={
+              shouldReduceMotion
+                ? { duration: 0.5 }
+                : { duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }
+            }
+            aria-hidden="true"
           >
-            <Check size={14} />
-            <span>Auto-fill</span>
-          </button>
-        </div>
-
-        {/* Global Auth Error Alert */}
-        {authError && (
-          <div className="auth-error-alert" role="alert">
-            <AlertCircle size={18} className="auth-error-icon" />
-            <span className="auth-error-text">{authError}</span>
-          </div>
-        )}
-
-        {/* Login Form */}
-        <form onSubmit={handleSubmit} className="login-form" noValidate>
-          {/* Email Field */}
-          <div className="form-group">
-            <label htmlFor="login-email" className="form-label">
-              Work Email
-            </label>
-            <div className={`input-icon-wrapper ${errors.email ? 'input-has-error' : ''}`}>
-              <Mail size={18} className="field-icon" aria-hidden="true" />
-              <input
-                id="login-email"
-                type="email"
-                className="form-control"
-                placeholder="name@company.com"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (errors.email) setErrors((prev) => ({ ...prev, email: null }));
-                }}
-                autoComplete="email"
-                required
-              />
+            <div className="deco-badge-icon">
+              <Shield size={12} />
             </div>
-            {errors.email && <span className="field-error-msg">{errors.email}</span>}
-          </div>
+            <span className="deco-badge-label">SubmitSafe</span>
+          </motion.div>
 
-          {/* Password Field */}
-          <div className="form-group">
-            <div className="form-label-row">
-              <label htmlFor="login-password" className="form-label">
-                Password
-              </label>
-              <a
-                href="#forgot"
-                onClick={handleForgotPassword}
-                className="forgot-password-link"
-              >
-                Forgot password?
-              </a>
-            </div>
-            <div className={`input-icon-wrapper ${errors.password ? 'input-has-error' : ''}`}>
-              <Lock size={18} className="field-icon" aria-hidden="true" />
-              <input
-                id="login-password"
-                type={showPassword ? 'text' : 'password'}
-                className="form-control"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (errors.password) setErrors((prev) => ({ ...prev, password: null }));
-                }}
-                autoComplete="current-password"
-                required
-              />
-              <button
-                type="button"
-                className="btn-password-toggle"
-                onClick={() => setShowPassword((prev) => !prev)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            {errors.password && <span className="field-error-msg">{errors.password}</span>}
-          </div>
-
-          {/* Remember Me Checkbox */}
-          <div className="form-checkbox-row">
-            <label className="checkbox-container">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-              />
-              <span className="checkbox-label">Keep me signed in</span>
-            </label>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="btn btn-primary btn-login-submit"
-            disabled={isSubmitting}
+          <motion.div
+            className="deco-env-badge badge-roleready"
+            initial={{ opacity: 0, y: 8 }}
+            animate={
+              shouldReduceMotion
+                ? { opacity: 0.2, y: 0 }
+                : { opacity: 0.2, y: [0, 3, 0] }
+            }
+            transition={
+              shouldReduceMotion
+                ? { duration: 0.5 }
+                : { duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }
+            }
+            aria-hidden="true"
           >
-            {isSubmitting ? (
-              <>
-                <span className="btn-spinner" aria-hidden="true"></span>
-                <span>Authenticating...</span>
-              </>
-            ) : (
-              <>
-                <span>Sign In to Portal</span>
-                <ArrowRight size={18} className="btn-arrow-icon" />
-              </>
-            )}
-          </button>
-        </form>
+            <div className="deco-badge-icon">
+              <CheckCircle2 size={12} />
+            </div>
+            <span className="deco-badge-label">ROLE READY</span>
+          </motion.div>
 
-        {/* Footer Notice */}
-        <div className="login-footer">
-          <p className="login-security-notice">
-            🔒 Protected enterprise portal. Powered by Express, Prisma & PostgreSQL.
-          </p>
+          {/* Frosted Glass Login Card */}
+          <motion.div
+            className={`sonar-login-card ${shakeCard ? 'shake-card-active' : ''}`}
+            initial={{ opacity: 0, x: -22, scale: 0.98 }}
+            animate={{
+              opacity: 1,
+              x: shakeCard ? [-6, 6, -4, 4, -2, 2, 0] : 0,
+              scale: 1
+            }}
+            transition={{
+              duration: shakeCard ? 0.45 : 0.7,
+              ease: [0.16, 1, 0.3, 1],
+              delay: shakeCard ? 0 : 0.1
+            }}
+          >
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="sonar-login-card-inner"
+            >
+              {/* Header & Brand Reveal */}
+              <motion.div variants={itemVariants} className="sonar-brand-header">
+                <motion.div
+                  className="sonar-brand-badge"
+                  initial={{ scale: 0.88, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <Building2 size={22} className="sonar-brand-icon" />
+                  <span className="sonar-brand-icon-glow" />
+                </motion.div>
+                <div className="sonar-title-wrap">
+                  <h1 ref={brandTitleRef} className="sonar-app-title">SONAR EMS</h1>
+                </div>
+                <p ref={subtitleRef} className="sonar-app-subtitle">Internal Employee Management Portal</p>
+              </motion.div>
+
+              {/* Authentication Error Alert */}
+              <AnimatePresence mode="wait">
+                {authError && (
+                  <motion.div
+                    className="sonar-auth-error-alert"
+                    role="alert"
+                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                  >
+                    <AlertCircle size={16} className="sonar-error-icon" />
+                    <span className="sonar-error-text">{authError}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Login Form */}
+              <form onSubmit={handleSubmit} className="sonar-form" noValidate>
+                {/* Work Email Field */}
+                <motion.div variants={itemVariants} className="sonar-form-group">
+                  <label htmlFor="login-email" className="sonar-label">
+                    Work Email
+                  </label>
+                  <div
+                    className={`sonar-input-shell ${errors.email ? 'input-error' : ''}`}
+                  >
+                    <Mail size={16} className="sonar-field-icon" aria-hidden="true" />
+                    <input
+                      id="login-email"
+                      type="email"
+                      className="sonar-input"
+                      placeholder="name@company.com"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (errors.email) setErrors((prev) => ({ ...prev, email: null }));
+                        if (authError) setAuthError(null);
+                      }}
+                      autoComplete="email"
+                      required
+                    />
+                  </div>
+                  {errors.email && (
+                    <motion.span
+                      initial={{ opacity: 0, y: -3 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="sonar-field-error"
+                    >
+                      {errors.email}
+                    </motion.span>
+                  )}
+                </motion.div>
+
+                {/* Password Field */}
+                <motion.div variants={itemVariants} className="sonar-form-group">
+                  <label htmlFor="login-password" className="sonar-label">
+                    Password
+                  </label>
+                  <div
+                    className={`sonar-input-shell ${errors.password ? 'input-error' : ''}`}
+                  >
+                    <Lock size={16} className="sonar-field-icon" aria-hidden="true" />
+                    <input
+                      id="login-password"
+                      type={showPassword ? 'text' : 'password'}
+                      className="sonar-input sonar-password-input"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (errors.password) setErrors((prev) => ({ ...prev, password: null }));
+                        if (authError) setAuthError(null);
+                      }}
+                      autoComplete="current-password"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="sonar-password-toggle-btn"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      <AnimatePresence mode="wait" initial={false}>
+                        {showPassword ? (
+                          <motion.span
+                            key="eye-off"
+                            initial={{ opacity: 0, scale: 0.7, rotate: -20 }}
+                            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                            exit={{ opacity: 0, scale: 0.7, rotate: 20 }}
+                            transition={{ duration: 0.16 }}
+                            className="toggle-icon-wrap"
+                          >
+                            <EyeOff size={16} />
+                          </motion.span>
+                        ) : (
+                          <motion.span
+                            key="eye"
+                            initial={{ opacity: 0, scale: 0.7, rotate: 20 }}
+                            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                            exit={{ opacity: 0, scale: 0.7, rotate: -20 }}
+                            transition={{ duration: 0.16 }}
+                            className="toggle-icon-wrap"
+                          >
+                            <Eye size={16} />
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <motion.span
+                      initial={{ opacity: 0, y: -3 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="sonar-field-error"
+                    >
+                      {errors.password}
+                    </motion.span>
+                  )}
+                </motion.div>
+
+                {/* Keep Signed In Row */}
+                <motion.div variants={itemVariants} className="sonar-checkbox-row">
+                  <label className="sonar-checkbox-label">
+                    <input
+                      type="checkbox"
+                      className="sonar-checkbox-input"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                    />
+                    <span className="sonar-checkbox-custom" aria-hidden="true" />
+                    <span className="sonar-checkbox-text">Keep me signed in</span>
+                  </label>
+                </motion.div>
+
+                {/* Submit Button with Multi-State Animation */}
+                <motion.div variants={itemVariants}>
+                  <motion.button
+                    type="submit"
+                    className={`sonar-btn-submit ${isSuccess ? 'btn-success-state' : ''}`}
+                    disabled={isSubmitting || isSuccess}
+                    whileHover={!isSubmitting && !isSuccess ? { scale: 1.015, y: -2 } : {}}
+                    whileTap={!isSubmitting && !isSuccess ? { scale: 0.96 } : {}}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <AnimatePresence mode="wait">
+                      {isSuccess ? (
+                        <motion.span
+                          key="success"
+                          className="btn-content-flex"
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <CheckCircle2 size={16} className="btn-icon-spin" />
+                          <span>Access Granted • Entering Portal...</span>
+                        </motion.span>
+                      ) : isSubmitting ? (
+                        <motion.span
+                          key="submitting"
+                          className="btn-content-flex"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                        >
+                          <span className="sonar-spinner" aria-hidden="true" />
+                          <span>Authenticating...</span>
+                        </motion.span>
+                      ) : (
+                        <motion.span
+                          key="idle"
+                          className="btn-content-flex"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                        >
+                          <span>Sign In to Portal</span>
+                          <ArrowRight size={16} className="sonar-btn-arrow" />
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </motion.button>
+                </motion.div>
+              </form>
+
+              {/* Footer Security Notice */}
+              <motion.div variants={itemVariants} className="sonar-card-footer">
+                <p className="sonar-security-notice">
+                  <ShieldCheck size={13} className="sonar-security-icon" />
+                  <span>SONAR Enterprise Management System • Authorized Personnel Only</span>
+                </p>
+              </motion.div>
+            </motion.div>
+          </motion.div>
         </div>
-      </motion.div>
+
+        {/* RIGHT COLUMN: Integrated Team Visual Viewport (~70%) */}
+        <div className="sonar-image-viewport">
+          <div className="sonar-image-parallax-wrapper">
+            <motion.img
+              src="/assets/team-sonar.jpg"
+              alt="SONAR Team Office Celebration"
+              className="sonar-team-image"
+              loading="eager"
+              style={{ x: smoothImgX, y: smoothImgY }}
+              initial={{ opacity: 0, scale: 1.03 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            />
+          </div>
+
+          {/* Seamless Edge Feathering (Gentle 80px dissolve to #0a1124 - NO LINE, NO HIDDEN PEOPLE) */}
+          <div className="sonar-blend-feather" aria-hidden="true" />
+          <div className="sonar-blend-gradient-y" aria-hidden="true" />
+
+          {/* Floating Team Pill Badge (Bottom Right) */}
+          <motion.div
+            className="sonar-image-badge"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.75, duration: 0.5, ease: 'easeOut' }}
+          >
+            <span className="badge-pulse-dot" />
+            <span className="badge-text">SONAR Technologies • Engineering, Operations & Culture</span>
+          </motion.div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import EmployeeAvatar from './common/EmployeeAvatar';
 
 /**
  * EmployeeCard component
@@ -58,7 +59,7 @@ export default function EmployeeCard({ employee, onEdit, onDelete }) {
   return (
     <div className="employee-card">
       <div className="employee-card-header">
-        <div className="employee-avatar">{getInitials(employee.name)}</div>
+        <EmployeeAvatar employee={employee} size="md" />
         <div className="employee-main-info">
           <h3 className="employee-name">{employee.name}</h3>
           <span className="employee-designation">{employee.designation || 'Staff'}</span>

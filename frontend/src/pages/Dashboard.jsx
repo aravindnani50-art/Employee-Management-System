@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -14,10 +14,51 @@ import {
 } from 'lucide-react';
 import { getEmployees, getDepartments } from '../services/employeeApi';
 import { formatCurrency, formatDate } from '../utils/formatters';
-import Avatar from '../components/common/Avatar';
+import EmployeeAvatar from '../components/common/EmployeeAvatar';
 import Badge from '../components/common/Badge';
 import { Skeleton } from '../components/common/Skeleton';
 import ErrorMessage from '../components/ErrorMessage';
+import {
+  gsap,
+  useGsapContext,
+  animateSplitHeading,
+  scrambleElementText,
+  initCard3DTilt,
+  initScrollReveal
+} from '../animations/gsapUtils';
+import SonarRadarWidget from '../components/common/SonarRadarWidget';
+
+/**
+ * AnimatedCounter Component
+ * Animates a number from 0 to its target value smoothly using GSAP.
+ */
+function AnimatedCounter({ value, formatter }) {
+  const counterRef = useRef(null);
+
+  useEffect(() => {
+    const end = typeof value === 'number' ? value : parseInt(value, 10) || 0;
+    if (!counterRef.current) return;
+
+    const obj = { val: 0 };
+    const tween = gsap.to(obj, {
+      val: end,
+      duration: 1.2,
+      ease: 'power3.out',
+      roundProps: 'val',
+      onUpdate: () => {
+        if (counterRef.current) {
+          counterRef.current.innerText = formatter
+            ? formatter(Math.round(obj.val))
+            : Math.round(obj.val).toLocaleString();
+        }
+      }
+    });
+
+    return () => tween.kill();
+  }, [value, formatter]);
+
+  return <span ref={counterRef}>0</span>;
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -101,40 +142,74 @@ export default function Dashboard() {
     loadDashboardData();
   }, [loadDashboardData]);
 
+  const dashboardRef = useRef(null);
+  const titleRef = useRef(null);
+  const tagRef = useRef(null);
+
+  useGsapContext(dashboardRef, ({ q }) => {
+    // 1. SplitText reveal on title
+    if (titleRef.current) {
+      animateSplitHeading(titleRef.current, { delay: 0.1, duration: 0.75 });
+    }
+
+    // 2. ScrambleText on tag
+    if (tagRef.current) {
+      scrambleElementText(tagRef.current, 'OPERATIONAL WORKFORCE TELEMETRY', { delay: 0.35, duration: 1.2 });
+    }
+
+    // 3. 3D tilt on all KPI cards
+    const cards = q('.kpi-card');
+    cards.forEach((card) => {
+      initCard3DTilt(card, { maxTilt: 7, scale: 1.015 });
+    });
+
+    // 4. ScrollTrigger batch reveal for panels
+    initScrollReveal(q('.dashboard-panel'), { y: 25, duration: 0.6, stagger: 0.12 });
+  }, [loading]);
+
   const cardVariants = {
-    hidden: { opacity: 0, y: 12 },
+    hidden: { opacity: 0, y: 14 },
     visible: (i) => ({
       opacity: 1,
       y: 0,
-      transition: { delay: i * 0.07, duration: 0.22, ease: 'easeOut' }
+      transition: { delay: 0.06 + i * 0.06, duration: 0.22, ease: [0.16, 1, 0.3, 1] }
     })
   };
 
   return (
-    <div className="dashboard-container">
+    <div ref={dashboardRef} className="dashboard-container">
       {/* Welcome Banner */}
-      <div className="dashboard-welcome-banner">
+      <motion.div
+        className="dashboard-welcome-banner"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+      >
         <div className="welcome-text-col">
           <div className="welcome-tag">
             <Sparkles size={14} />
-            <span>Operational Workforce Insights</span>
+            <span ref={tagRef}>Operational Workforce Insights</span>
           </div>
-          <h2 className="welcome-title">Enterprise Workforce Dashboard</h2>
+          <h2 ref={titleRef} className="welcome-title">Enterprise Workforce Dashboard</h2>
           <p className="welcome-desc">
             Monitor real-time personnel data, departmental allocations, and compensation across the organization.
           </p>
         </div>
         <div className="welcome-actions-col">
-          <Link to="/employees/new" className="btn btn-primary">
-            <UserPlus size={16} />
-            <span>Add New Employee</span>
-          </Link>
-          <Link to="/employees" className="btn btn-secondary">
-            <span>View All Records</span>
-            <ArrowRight size={16} />
-          </Link>
+          <motion.div whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}>
+            <Link to="/employees/new" className="btn btn-primary">
+              <UserPlus size={16} />
+              <span>Add New Employee</span>
+            </Link>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}>
+            <Link to="/employees" className="btn btn-secondary">
+              <span>View All Records</span>
+              <ArrowRight size={16} />
+            </Link>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Error State */}
       {error && <ErrorMessage message={error} onRetry={loadDashboardData} />}
@@ -156,7 +231,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="kpi-value">
-            {loading ? <Skeleton width="80px" height="2.2rem" /> : stats.totalEmployees}
+            {loading ? <Skeleton width="80px" height="2.2rem" /> : <AnimatedCounter value={stats.totalEmployees} />}
           </div>
           <div className="kpi-footer">
             <span className="kpi-trend positive">
@@ -181,7 +256,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="kpi-value">
-            {loading ? <Skeleton width="60px" height="2.2rem" /> : stats.totalDepartments}
+            {loading ? <Skeleton width="60px" height="2.2rem" /> : <AnimatedCounter value={stats.totalDepartments} />}
           </div>
           <div className="kpi-footer">
             <Link to="/departments" className="kpi-link">
@@ -206,7 +281,14 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="kpi-value">
-            {loading ? <Skeleton width="110px" height="2.2rem" /> : formatCurrency(stats.averageSalary)}
+            {loading ? (
+              <Skeleton width="110px" height="2.2rem" />
+            ) : (
+              <AnimatedCounter
+                value={stats.averageSalary}
+                formatter={(val) => formatCurrency(val)}
+              />
+            )}
           </div>
           <div className="kpi-footer">
             <span className="kpi-subtext">Across active directory</span>
@@ -228,7 +310,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="kpi-value">
-            {loading ? <Skeleton width="50px" height="2.2rem" /> : stats.totalRoles}
+            {loading ? <Skeleton width="50px" height="2.2rem" /> : <AnimatedCounter value={stats.totalRoles} />}
           </div>
           <div className="kpi-footer">
             <span className="kpi-subtext">Specialized roles</span>
@@ -237,7 +319,12 @@ export default function Dashboard() {
       </div>
 
       {/* Main Dashboard Two-Column Section */}
-      <div className="dashboard-columns-grid">
+      <motion.div
+        className="dashboard-columns-grid"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.28, duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      >
         {/* Left Column: Recent Employees */}
         <div className="dashboard-panel">
           <div className="panel-header">
@@ -268,24 +355,39 @@ export default function Dashboard() {
               <p className="empty-inline-note">No employee records in the system yet.</p>
             ) : (
               <div className="recent-employees-list">
-                {recentEmployees.map((emp) => (
-                  <Link
+                {recentEmployees.map((emp, idx) => (
+                  <motion.div
                     key={emp.id}
-                    to={`/employees/${emp.id}`}
-                    className="recent-employee-item"
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.32 + idx * 0.04, duration: 0.2 }}
+                    whileHover={{ x: 6 }}
                   >
-                    <Avatar name={emp.name} size="sm" />
-                    <div className="recent-employee-info">
-                      <span className="recent-emp-name">{emp.name}</span>
-                      <span className="recent-emp-role">{emp.designation}</span>
-                    </div>
-                    <div className="recent-employee-meta">
-                      <Badge department={emp.department?.name}>
-                        {emp.department?.name || 'General'}
-                      </Badge>
-                      <span className="recent-emp-date">{formatDate(emp.createdAt)}</span>
-                    </div>
-                  </Link>
+                    <Link
+                      to={`/employees/${emp.id}`}
+                      className="recent-employee-item"
+                    >
+                      <motion.div
+                        className="recent-avatar-wrap"
+                        initial={{ scale: 0.85, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        whileHover={{ scale: 1.12 }}
+                        transition={{ delay: 0.35 + idx * 0.04, duration: 0.2 }}
+                      >
+                        <EmployeeAvatar employee={emp} size="sm" />
+                      </motion.div>
+                      <div className="recent-employee-info">
+                        <span className="recent-emp-name">{emp.name}</span>
+                        <span className="recent-emp-role">{emp.designation}</span>
+                      </div>
+                      <div className="recent-employee-meta">
+                        <Badge department={emp.department?.name}>
+                          {emp.department?.name || 'General'}
+                        </Badge>
+                        <span className="recent-emp-date">{formatDate(emp.createdAt)}</span>
+                      </div>
+                    </Link>
+                  </motion.div>
                 ))}
               </div>
             )}
@@ -319,8 +421,14 @@ export default function Dashboard() {
               <p className="empty-inline-note">No department breakdown available.</p>
             ) : (
               <div className="department-distribution-list">
-                {departmentBreakdown.map((dept) => (
-                  <div key={dept.id} className="distribution-item">
+                {departmentBreakdown.map((dept, idx) => (
+                  <motion.div
+                    key={dept.id}
+                    className="distribution-item"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.32 + idx * 0.04, duration: 0.2 }}
+                  >
                     <div className="distribution-label-row">
                       <span className="distribution-dept-name">{dept.name}</span>
                       <span className="distribution-dept-count">
@@ -328,21 +436,28 @@ export default function Dashboard() {
                       </span>
                     </div>
                     <div className="distribution-progress-track">
-                      <div
+                      <motion.div
                         className="distribution-progress-fill"
-                        style={{ width: `${Math.max(5, dept.percentage)}%` }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.max(5, dept.percentage)}%` }}
+                        transition={{ delay: 0.38 + idx * 0.05, duration: 0.45, ease: 'easeOut' }}
                         aria-valuenow={dept.percentage}
                         aria-valuemin="0"
                         aria-valuemax="100"
                       />
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
+
+            {/* Embedded Sonar Visual Identity Radar (MotionPath, Sweep & Telemetry) */}
+            <div className="dept-panel-telemetry-embed" style={{ marginTop: '1.25rem' }}>
+              <SonarRadarWidget isFloating={false} />
+            </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

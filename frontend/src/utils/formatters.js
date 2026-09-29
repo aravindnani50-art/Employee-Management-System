@@ -43,7 +43,7 @@ export function formatDate(dateInput) {
 /**
  * Extracts 1-2 letter initials from a person's name
  * @param {string} name 
- * @returns {string} e.g. "Alex Morgan" -> "AM", "John" -> "JO"
+ * @returns {string} e.g. "Sarah Connor" -> "SC", "John" -> "JO"
  */
 export function getInitials(name) {
   if (!name || typeof name !== 'string') return 'EM';

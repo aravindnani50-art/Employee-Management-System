@@ -15,7 +15,7 @@ const ALLOWED_SORT_ORDERS = ['asc', 'desc'];
  * @returns {Promise<Object>} Created employee with department details
  */
 const createEmployee = async (employeeData) => {
-  const { name, email, phone, departmentId, designation, salary } = employeeData;
+  const { name, email, phone, departmentId, designation, salary, imageUrl } = employeeData;
   const normalizedEmail = email.trim().toLowerCase();
 
   // 1. Check if email already exists in the database
@@ -45,6 +45,7 @@ const createEmployee = async (employeeData) => {
       departmentId: Number(departmentId),
       designation: designation.trim(),
       salary: parseFloat(salary),
+      imageUrl: imageUrl && String(imageUrl).trim() ? String(imageUrl).trim() : null,
     },
     include: {
       department: true,
@@ -78,8 +79,8 @@ const getAllEmployees = async (queryParams) => {
     search,
     department,
     designation,
-    sortBy = 'createdAt',
-    sortOrder = 'desc',
+    sortBy = 'name',
+    sortOrder = 'asc',
   } = queryParams;
 
   // Normalize pagination parameters
@@ -117,30 +118,48 @@ const getAllEmployees = async (queryParams) => {
   }
 
   // Validate and sanitize sorting inputs against whitelist
-  const validatedSortBy = ALLOWED_SORT_FIELDS.includes(sortBy) ? sortBy : 'createdAt';
+  const validatedSortBy = ALLOWED_SORT_FIELDS.includes(sortBy) ? sortBy : 'name';
   const validatedSortOrder = ALLOWED_SORT_ORDERS.includes(String(sortOrder).toLowerCase())
     ? String(sortOrder).toLowerCase()
-    : 'desc';
+    : 'asc';
 
-  // Execute database queries in parallel for optimal performance
-  const [total, employees] = await Promise.all([
-    // 1. Total records matching filter conditions for accurate pagination metadata
-    prisma.employee.count({ where }),
+  // Fetch matching records with relational department details
+  const allEmployees = await prisma.employee.findMany({
+    where,
+    orderBy: {
+      [validatedSortBy]: validatedSortOrder,
+    },
+    include: {
+      department: true,
+    },
+  });
 
-    // 2. Fetch current page slice with relational department details
-    prisma.employee.findMany({
-      where,
-      skip,
-      take,
-      orderBy: {
-        [validatedSortBy]: validatedSortOrder,
-      },
-      include: {
-        department: true,
-      },
-    }),
-  ]);
+  const total = allEmployees.length;
 
+  // Custom ordering logic:
+  // "Aravind Kumar" appears first, followed immediately by "Bhuvana Thummalapalli".
+  // Keep all other employees after them using the existing sorting/order logic.
+  const isAravind = (emp) => {
+    const name = (emp?.name || '').trim().toLowerCase();
+    return (name.includes('aravind') && name.includes('kumar')) || emp?.id === 15;
+  };
+
+  const isBhuvana = (emp) => {
+    const name = (emp?.name || '').trim().toLowerCase();
+    return (name.includes('bhuvana') && name.includes('thummalapalli')) || emp?.id === 21;
+  };
+
+  const aravind = allEmployees.find(isAravind);
+  const bhuvana = allEmployees.find(isBhuvana);
+  const others = allEmployees.filter((emp) => !isAravind(emp) && !isBhuvana(emp));
+
+  const orderedEmployees = [
+    ...(aravind ? [aravind] : []),
+    ...(bhuvana ? [bhuvana] : []),
+    ...others,
+  ];
+
+  const employees = orderedEmployees.slice(skip, skip + take);
   const totalPages = Math.ceil(total / parsedLimit) || 1;
 
   return {
@@ -190,7 +209,7 @@ const updateEmployee = async (id, updateData) => {
     throw new AppError('Employee not found', 404);
   }
 
-  const { name, email, phone, departmentId, designation, salary } = updateData;
+  const { name, email, phone, departmentId, designation, salary, imageUrl } = updateData;
   const normalizedEmail = email.trim().toLowerCase();
 
   // 2. Check if the updated email is already taken by ANOTHER employee
@@ -213,17 +232,23 @@ const updateEmployee = async (id, updateData) => {
     throw new AppError('Department with the specified ID does not exist', 400);
   }
 
+  const updateFields = {
+    name: name.trim(),
+    email: normalizedEmail,
+    phone: phone ? String(phone).trim() : null,
+    departmentId: Number(departmentId),
+    designation: designation.trim(),
+    salary: parseFloat(salary),
+  };
+
+  if (imageUrl !== undefined) {
+    updateFields.imageUrl = imageUrl && String(imageUrl).trim() ? String(imageUrl).trim() : null;
+  }
+
   // 4. Update the employee record
   const updatedEmployee = await prisma.employee.update({
     where: { id },
-    data: {
-      name: name.trim(),
-      email: normalizedEmail,
-      phone: phone ? String(phone).trim() : null,
-      departmentId: Number(departmentId),
-      designation: designation.trim(),
-      salary: parseFloat(salary),
-    },
+    data: updateFields,
     include: {
       department: true,
     },

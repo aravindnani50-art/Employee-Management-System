@@ -10,13 +10,13 @@ export default function ProtectedRoute({ children }) {
     return (
       <div className="auth-loading-screen" aria-live="polite">
         <div className="spinner" role="status" aria-label="Authenticating session"></div>
-        <p className="auth-loading-text">Loading WorkPulse EMS...</p>
+        <p className="auth-loading-text">Loading SONAR EMS...</p>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;
